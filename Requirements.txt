@@ -1,3 +1,4 @@
-python-opencv==4.1.2
 easyocr
 airtest
+python-opencv==4.1.2
+keyboard
