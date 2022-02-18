@@ -1,4 +1,6 @@
 # Statistical-Tools-WSGR
+## UnderConstruction
+鉴于 `python` 进行 `nnumpy` 和 `opencv` 并不支持的复杂数学运算效率实在感人，正在逐步用 `C++` 替换图像识别
 ## 简介
 面向工作室的战舰少女统计工具，正在开发中
 ## 现有功能
