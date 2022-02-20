@@ -1,14 +1,45 @@
-from PIL import Image
+from PIL import Image,ImageFilter
 from numpy import array
 import easyocr
+import numpy as np
 import os
 import time
+from ConstVariables import *
+from ImageTurn import GetKeyPoint
 NumberImage = []
 resulotion = ()
 FileTime = 0
-#size:250,125
-os.chdir(os.getcwd()+"\\rec1")
-Box = [0,(1198,565),(1405,500),(1176,378),(1382,311),(1075,230),(1235,157)]
+import cv2
+
+"""暴击检测思路
+采用渐变色二值化法
+观察发现颜色处于两种相差较大的黄色的渐变色
+两种颜色分别为 (253,237,90),(249,185,35)
+计算每个像素点和两个点的欧几里得距离的最小值。
+不超过阈值 20 即认为是可行点
+按照点的可行与否进行二值化后降噪
+如果降噪失败则再次计算每个像素点到原点的距离，取阈值 20 左右作为判定黑点的依据
+进行边框处理再次降噪
+降噪后期望图中只存在 '击' '穿'
+提取出每个字，检验同一排是否存在对应字 
+计算期望中心和实际中心欧几里得距离，设定阈值 5 作为依据。
+"""
+"""未命中，跳弹检测思路
+同样采用渐变色法二值化
+注意判定二者的不同，尽量避免同时出现，如果出现采用追踪算法
+"""
+"""图像直线追踪
+PRE:
+提取视频中三帧图像
+按追踪模板的特性对视频进行二值化并降噪
+截取出期望位置
+STEP1:提取图像特征点
+STEP2:对期望位置尝试寻找目标并匹配
+"""
+
+
+os.chdir(os.getcwd()+"\\rec2")
+
 def ClearFile(path):
     os.system("del "+path)
 def CheckBoom():
@@ -151,40 +182,40 @@ def Recognize(path1):
     res = [0]
     for j in range(1,7):
         path2 = str(j)+"T"+path1
-        ToBlackWhite(path1,path2,box=(Box[j][0],Box[j][1],Box[j][0]+186,Box[j][1]+166))
+        ToBlackWhite(path1,path2,box=(BOX[j][0],BOX[j][1],BOX[j][0]+186,BOX[j][1]+166))
         res.append(RecognizeNumber(path2))
     return res
-def CheckMiss1():
-    pass
+def CheckMiss1(path1):
+    res = [0,]
+    for j in range(1,7):
+        path2 = str(j)+"T"+path1
+        path3 = str(j)+"TT"+path1
+        GetPosImage(path1,path2,j)
+        GetKeyPoint(path2,path2,MISSLINE,Limit=12)
+        WriteGeryImage(Image.open(path2).convert("L"),"data.in")
+        #os.system("del "+path2)
+        os.system("CountMiss")
+        ReadImage("data.out").save(path3)
+        with open("res.out",mode="r") as file:
+            cnt = int(file.readline())
+            res.append(max((cnt-3)/2,0))
+            print(cnt)
+    print(res)
+    return res
 def CheckMiss2():
     pass
 def GetPosImage(path1,path2,pos):
     #将 path1 的 pos 部分导出到 path2
-    img = Image.open(path1).convert("L")
-    img.crop((Box[pos][0],Box[pos][1],Box[pos][0]+180,Box[pos][1]+165)).save(path2)
-
-
-
-"""print(Recognize("1.png"))"""
-"""ToBlackWhite("1.PNG","TMP1.PNG",box=(Box[2][0],Box[2][1],Box[2][0]+180,Box[2][1]+135))
-print(RecognizeNumber("TMP1.PNG"))"""
-ClearFile("res.out")
-file = open("res.out","a")
-"""GetPosImage("1.PNG","11.PNG",4)
-WriteGeryImage(Image.open("11.PNG"),"data.in")"""
-Reader = easyocr.Reader(["en"])
-path = "1.png"
-for i in range(1,42):
-    path = str(i)+".PNG"
-    #img = open(path)
-    #resulotion = (img.size[0],img.size[1])
-    #print(Recognize(path))
-    Image.open(path).convert("L").resize((1600,900)).save(path)
-    file.write(str(i)+":"+str(Recognize(path))+"\n")
-    for j in range(1,7):
-        os.system("del "+ str(j) + "T" +path)
-        pass
-file.close()
-print(FileTime)
+    img = Image.open(path1)
+    img.crop((BOX[pos][0],BOX[pos][1],BOX[pos][0]+180,BOX[pos][1]+165)).save(path2)
+def Filtering(path):
+    img = Image.open(path)
+    img = img.filter(ImageFilter.DETAIL)
+    img.save(path)
+cap = cv2.VideoCapture("Test.MP4")
+cap.release()
+print("OK")
+"""Reader = easyocr.Reader(["en"])
+CheckMiss1("1.PNG")"""
 
 
