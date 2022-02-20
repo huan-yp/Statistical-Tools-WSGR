@@ -86,3 +86,5 @@ Position:3,Type:NORMAL"
 
 见 `\Docu`
 
+## 额外功能：
+如果需要更完善的功能麻烦发 $\text{Issue}$.
