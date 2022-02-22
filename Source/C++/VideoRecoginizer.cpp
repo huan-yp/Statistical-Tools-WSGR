@@ -1,88 +1,39 @@
-#include <opencv2\opencv.hpp>
-#include <iostream>
-#include <time.h>
-#include <fstream>
-#include <iostream>    
-#include <windows.h>    
-#include <psapi.h>    
-#pragma comment(lib,"psapi.lib")    
+/*
+Creted:2022.2.16
+Author:Huan_yp/Phantom_Peng
+Function:Switch video to data in WSGR 
+Requirements:opencv4.5.1,MSVC,Win10
+*/
+
+#include<Operation.h>
+#include<Debug.h>
 using namespace std;
 
 #define INF 1000000000
-
-
 using namespace std;
 
 int DEBUG = 0;
 int TESTTIME = 0;
-int CONSOLE = 0;
-const int MAXWEIGHT=1605, MAXHEIGHT = 905;
+int CONSOLE = 1;
+int CONSOLERES = 1;
+
 const int BIRGHT = 18;
 const int BOX[] = { {},{},{},{},{},{},{} };\
+const int BLUE1[] = {15,121,174};
+const int BLUE2[] = {64,212,223};
 
-int flag = 1, skip,FrameNow;
+int flag = 1, have,skip,FrameNow;
 int StatuCount[12];
 
 double VideoGap, VideoRate;
 
 string FightStatuNow;
-
-struct Point {
-	double x, y;
-	Point() :x(), y() {}
-	Point(double x, double y) :x(x), y(y) {}
-	double CalcDis(const Point& a) {
-		return sqrt(pow(a.x - x, 2) + pow(a.y - y, 2));
-	}
-	double CalcDis(double x, double y) {
-		return CalcDis(Point(x, y));
-	}
-};
-struct Line {
-	double k, b;
-	Line() :k(), b() {}
-	Line(double k, double b) :k(k), b(b) {}
-	void InitLineK(double kk, double bb) {
-		k = kk, b = bb;
-	}
-	void InitLineP(Point a, Point bb) {
-		k = (a.y - bb.y) / (a.x - bb.x);
-		b = a.y - a.x * k;
-	}
-	double Calcdistance(Point p) {
-		return abs(k * p.x - p.y + b) / sqrt(1 + k * k);
-	}
-	Point CalcIntersection(Line a) {
-		Point res;
-		res.x = (b - a.b) / (a.k - k);
-		res.y = k * res.x + b;
-		return res;
-	}
-};
-const Line MISSLINE1 = Line(0.8598438026744578, -16.77396336667041);
+/*const Line MISSLINE1 = Line(0.8598438026744578, -16.77396336667041);
 const Line MISSLINE2 = Line(1.0137781000725163, -14.201957940536621);
-const Line YELLOWLINE = Line(0.80546875, -75.34296875);
+const Line YELLOWLINE = Line(0.80546875, -75.34296875);*/
 
-namespace MathFunction {
-	double CalcDistance(double k, double b, double x, double y) {
-		return Line(k, b).Calcdistance(Point(x, y));
-	}
-	double CalcED(Point a, Point b) {
-		return a.CalcDis(b);
-	}
-	double CalcED(double x1, double y1, double x2, double y2) {
-		return Point(x1, y1).CalcDis(Point(x2, y2));
-	}
-}
+MathMatri MathMat[12];
 
-template<typename _type>
-void cmax(_type& x, _type y) {
-	x = max(x, y);
-}
-template<typename _type>
-void cmin(_type& x, _type y) {
-	x = min(x, y);
-}
 string NumberToString(int num) {
 	if (num == 0)return "0";
 	string res = "";
@@ -91,136 +42,22 @@ string NumberToString(int num) {
 	if (num == 0)return res;
 	return NumberToString(num) + res;
 }
-struct ImageMatri {
-	int n, m;
-	int a[MAXHEIGHT][MAXWEIGHT][3], g[MAXHEIGHT][MAXWEIGHT];
-	int resolution = 1600;
-	string path;
-	void resize(int weight, int height) {
-		cv::Mat nimg;
-		auto Img = ToImage();
-		cv::resize(Img, nimg, cv::Size(weight, height));
-		ToMatri(nimg);
-		nimg.release(), Img.release();
-	}
-	void SetGrey() {
-		for (int i = 0; i < n; ++i)
-			for (int j = 0; j < m; ++j)
-				g[i][j] = (a[i][j][0] * 299 + a[i][j][1] * 587 + a[i][j][2] * 114 + 500) / 1000;
-	}
-	void ToMatri(cv::Mat& image, int is_rgb = 0) {
-		n = image.rows, m = image.cols;
-		for (int i = 0; i < n; ++i)
-		{
-			//è·å–ç¬¬iè¡Œé¦–åƒç´ æŒ‡é’ˆ
-			cv::Vec3b* p = image.ptr<cv::Vec3b>(i);
-			for (int j = 0; j < m; ++j)
-			{
-				//å°†imgçš„bgrè½¬ä¸ºimageçš„rgb 
-				a[i][j][2] = p[j][0];
-				a[i][j][1] = p[j][1];
-				a[i][j][0] = p[j][2];
-			}
-		}
-		SetGrey();
-	}
-	void read(string ph) {
-		//ä» path è¯»å–å›¾ç‰‡ï¼Œå¹¶è½¬åŒ–ä¸º RGBé€šé“å€¼ä¿å­˜ï¼ŒåŒæ—¶è®¡ç®—ç°åº¦
-		path = ph;
-		cv::Mat image = cv::imread(path, cv::IMREAD_COLOR);
-		ToMatri(image);
-		resolution = image.cols;
-		image.release();
-	}
-	cv::Mat ToImage() {
-		cv::Mat image(n, m, CV_8UC3);
-		for (int i = 0; i < n; ++i)
-		{
-			//è·å–ç¬¬iè¡Œé¦–åƒç´ æŒ‡é’ˆ
-			cv::Vec3b* p = image.ptr<cv::Vec3b>(i);
-			for (int j = 0; j < m; ++j)
-			{
-				p[j][0] = a[i][j][2];
-				p[j][1] = a[i][j][1];
-				p[j][2] = a[i][j][0];
-			}
-		}
-		return image;
-	}
-	cv::Mat ToGreyImage() {
-		cv::Mat image(n, m, CV_8UC3);
-		for (int i = 0; i < n; ++i)
-		{
-			//è·å–ç¬¬iè¡Œé¦–åƒç´ æŒ‡é’ˆ
-			cv::Vec3b* p = image.ptr<cv::Vec3b>(i);
-			for (int j = 0; j < m; ++j)
-			{
-				p[j][0] = g[i][j];
-				p[j][1] = g[i][j];
-				p[j][2] = g[i][j];
-			}
-		}
-		return image;
-	}
-	void SaveImage(string path) {
-		//å°†å›¾ç‰‡ä¿å­˜è‡³ path
-		auto img = ToImage();
-		cv::imwrite(path, img);
-		img.release();
-	}
-	void SaveGrey(string path) {
-		auto img = ToGreyImage();
-		cv::imwrite(path, img);
-		img.release();
-	}
-	void crop(int left, int top, int right, int buttom) {
-		auto Img = ToImage();
-		auto nimg = Img(cv::Rect(left, top, right - left, buttom - top));
-		ToMatri(nimg);
-		nimg.release();
-		Img.release();
-	}
-};
-struct MathMatri {
-	int l, r, b, t;
-	Point cen;
-	void Set(int tt, int bb, int ll, int rr) {
-		l = ll, r = rr, b = bb, t = tt;
-		cen = Point(b + t >> 1, l + r >> 1);
-	}
-	bool in(int x, int y) {
-		return x >= t && x <= b && y <= r && y >= l;
-	}
-}MathMat[12];
-struct ImageGraph {
-	//å›¾åƒç‰¹å¾ç‚¹ç¦»æ•£å›¾,ç”¨äºç‰¹å¾ç‚¹åŒ¹é…ã€‚
-	//æš‚æ—¶æ²¡æƒ³åˆ°æ€ä¹ˆå†™ï¼Œå…¬å¼è¿˜æ²¡æ¨å‡ºæ¥ï¼Œä¸è¿‡ä¸åšå¤æ‚æƒ…æ™¯è¯†åˆ«å°±ä¸æ€¥
-	//ä¹Ÿè¿˜æ²¡æœ‰æ•°æ®
-	vector<int> e[100];
-	double GetGraphFromMatri(const ImageMatri& Image) {
-
-	}
-	double CalcSimilarity(const ImageMatri& Image) {
-
-	}
-
-};
 namespace NoiseReduction {
-	//é’ˆå¯¹ä¸åŒæƒ…æ™¯ä¸‹çš„é™å™ª
-	const int N = 1605, M = 1605;
+	//Õë¶Ô²»Í¬Çé¾°ÏÂµÄ½µÔë
+	const int N = 1605, M = 2305;
 	const int dx[] = { 1,1,0,0 }, dy[] = { 1,0,1,0 };
 	int Border = 20, n, m, cnt = 0, s = 0;
 	int rk[N][M], fa[N * M], size[N * M], KeyPointCount[10];
-	int maxn[N * M][2], minu[N * M][2], vis[N][M];
+	int maxn[N * M][2], minu[N * M][2], vis[N][M],KPC=0;
 	bool border[N][M], in[N][M];
 	queue<pair<int, int>> q;
-	//vis[i][j]:-1->æœªè®¡ç®—,0:åœ¨è¾¹æ¡†å†…,1:ä¸åœ¨è¾¹æ¡†å†…
-	//æ·¡åŒ–å›¾åƒè¾¹ç•Œæå–æ•ˆæœå¾ˆå·®ï¼Œè¾¹ç•Œæå–ç®—æ³•éœ€æ”¹è¿›
+	//vis[i][j]:-1->Î´¼ÆËã,0:ÔÚ±ß¿òÄÚ,1:²»ÔÚ±ß¿òÄÚ
+	//µ­»¯Í¼Ïñ±ß½çÌáÈ¡Ğ§¹ûºÜ²î£¬±ß½çÌáÈ¡Ëã·¨Ğè¸Ä½ø
 	bool ok(int x, int y) {
 		return x >= 0 && y >= 0 && x < n&& y < m;
 	}
 	void bfs() {
-		//è¿™é‡ŒæŒ‚äº†ï¼Œdfs æœä¸å‡ºæ¥
+		//ÕâÀï¹ÒÁË£¬dfs ËÑ²»³öÀ´
 		//rewiting...
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
@@ -228,10 +65,10 @@ namespace NoiseReduction {
 					vis[i][j] = 0;
 		for (int i = 0;i < n;i++) {
 			if (vis[i][0] == -1)q.push(make_pair(i, 0)), vis[i][0] = 1;
-			if (vis[i][m] == -1)q.push(make_pair(i, m)), vis[i][m] = 1;
+			if (vis[i][m-1] == -1)q.push(make_pair(i, m-1)), vis[i][m-1] = 1;
 		}
 		for (int i = 0;i < m;i++) {
-			if (vis[n][i] == -1)q.push(make_pair(n, i)), vis[n][i] = 1;
+			if (vis[n-1][i] == -1)q.push(make_pair(n-1, i)), vis[n-1][i] = 1;
 			if (vis[0][i] == -1)q.push(make_pair(0, i)), vis[0][i] = 1;
 		}
 		const int dxx[] = { 1,-1,0,0, }, dyy[] = { 0,0,1,-1 };
@@ -266,16 +103,12 @@ namespace NoiseReduction {
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
 				img.g[i][j] = 255 * border[i][j];
+		//Border Îª°×É«
 		if(DEBUG)img.SaveGrey("Border.PNG");
 	}
 	bool CheckBorder(const int* a) {
 		double r = a[0], g = a[1], b = a[2];
 		if ((abs(r - g) <= 60 && abs(g - b) <= 60 && abs(r - b) <= 60))
-			return 1;
-		if (min(r, min(g, b)) == 0)
-			return 0;
-		double flite1 = r / b, flite2 = b / g, flite3 = g / r;
-		if (flite1 <= 1.4 && flite1 >= 0.7 && flite2 <= 1.4 && flite2 >= 0.7 && flite3 <= 1.4 && flite3 >= 0.7)
 			return 1;
 		return 0;
 	}
@@ -292,37 +125,31 @@ namespace NoiseReduction {
 				Target.g[i][j] = vis[i][j] * 255;
 				if (Target.g[i][j]==0)count++;
 			}
+		//ºÚÉ«ÎªÓĞĞ§
 		if (DEBUG)Target.SaveGrey("Fill.PNG");
 		if (count == 0 || count > n * m / 3)
 			skip = 1;
 	}
-	void GetKeyPoint(ImageMatri& Target, Line l1, Line l2, string Type, double DisLimit = 18) {
-		//ä¼ å…¥ä¸€ä¸ªå›¾å½¢çŸ©é˜µï¼Œåˆ†æç‰¹å¾ç‚¹å¹¶å†™å…¥ç°åº¦å€¼
+	void GetKeyPoint(ImageMatri& Target, string Type, double DisLimit = 18) {
+		//´«ÈëÒ»¸öÍ¼ĞÎ¾ØÕó£¬·ÖÎöÌØÕ÷µã²¢Ğ´Èë»Ò¶ÈÖµ
+		KPC =0;
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
 				if (Type == "MISS") {
 					Target.g[i][j] = 0;
-					if (Target.a[i][j][0] < 170 || Target.a[i][j][1] > 175 || Target.a[i][j][1] < 40)continue;
-					else {}
-					double dis1 = l1.Calcdistance(Point(Target.a[i][j][1], Target.a[i][j][2]));
-					double dis = INF;
-					double dis2 = l2.Calcdistance(Point(Target.a[i][j][1], Target.a[i][j][2]));
-					if (dis1 > dis2)swap(dis1, dis2);
-					dis = dis1 * 0.9 + dis2 * 0.1;
-					if (dis <= DisLimit)
-						Target.g[i][j] = 255;
-
+					double h, s, v;
+					rgb_to_hsv(Target.a[i][j][0], Target.a[i][j][1], Target.a[i][j][2], h, s, v);
+					if (((h <= 0.1||h>=0.95) && s >= 0.3 && Target.a[i][j][2] <= 168 && v>=0.55))
+						Target.g[i][j] = 255, KPC++;
 					else
 						Target.g[i][j] = 0;
 				}
 				if (Type == "YELLOW") {
-					Target.g[i][j] = 0;
-					if (Target.a[i][j][0] < 170 || Target.a[i][j][1] < 150)continue;
-					else {}
 					Point p = Point(Target.a[i][j][1], Target.a[i][j][2]);
-					double dis = l1.Calcdistance(Point(Target.a[i][j][1], Target.a[i][j][2]));
-					if (dis <= DisLimit)
-						Target.g[i][j] = 255;
+					double h, s, v;
+					rgb_to_hsv(Target.a[i][j][0], Target.a[i][j][1], Target.a[i][j][2],h,s,v);
+					if ((h<=0.2&&h>=0.08&&s>=0.3&&Target.a[i][j][2]<=168 && v >= 0.55))
+						Target.g[i][j] = 255, KPC++;
 					else
 						Target.g[i][j] = 0;
 				}
@@ -335,7 +162,7 @@ namespace NoiseReduction {
 						continue;
 					}
 					if (CheckWhite(Target.a[i][j]))
-						Target.g[i][j] = 255;
+						Target.g[i][j] = 255, KPC++;
 					else
 						Target.g[i][j] = 0;
 				}
@@ -344,37 +171,54 @@ namespace NoiseReduction {
 	void GetBorder(const ImageMatri& Target) {
 		skip = 0;
 		int BorderCount = 0;
-		Border = 1.0 * 35 / (1.0 * Target.resolution / 1600);
+		//Border = 1.0 * 35 / (1.0 * Target.resolution / 1600);
+		Border = 1.0 * 35 / (1.0 * 1600 / Target.resolution);
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
 				border[i][j] = Target.g[i][j] <= Border && CheckBorder(Target.a[i][j]);
 				BorderCount += border[i][j];
 			}
 		if (DEBUG)ShowBorder();
-		if (BorderCount >= n * m /7)skip = 1;
+		if (BorderCount >= n * m /3||BorderCount<=100)skip = 1;
 	}
 	void Merge(ImageMatri& Target, string Type) {
-		//åˆå¹¶å…³é”®ç‚¹
+		//ºÏ²¢¹Ø¼üµã
 		cnt = 0;
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++)
+				if (vis[i][j])
+					Target.g[i][j] = 0;
+		if (DEBUG)Target.SaveGrey("Now.PNG");
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
 				for (int k = 0;k < 4;k++) {
 					int tox = i + dx[k], toy = j + dy[k];
-					if (tox >= n || toy >= m || Target.g[i][j] != Target.g[tox][toy])continue;
+					if (Target.g[i][j] == Target.g[tox][toy]&&tox < n &&toy < m)
 					merge(rk[i][j], rk[tox][toy]);
 				}
 			}
-
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
+				for (int k = 0;k < 4;k++) {
+					int tox = i + dx[k]*2, toy = j + dy[k]*2;
+					int u = find(rk[i][j]), v = find(rk[tox][toy]);
+					if (Target.g[i][j] == Target.g[tox][toy] && tox < n && toy < m&&size[u]<=150&&size[v]<=150)
+						merge(rk[i][j], rk[tox][toy]);
+				}
+			}
+		have = 0;
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++) {
+				if (Target.g[i][j])
+					have = 1;
 				int u = find(rk[i][j]);
 				int height = maxn[u][0] - minu[u][0], weight = maxn[u][1] - minu[u][1];
 				if (Type == "MISS") {
-					if (size[u] <= 75 || height <= 15 || weight <= 15 || vis[i][j] == 1)
+					if (size[u] <= 200 || height <= 15 || weight <= 15 || vis[i][j] == 1)
 						Target.g[i][j] = 0;
 				}
 				if (Type == "YELLOW") {
-					if (size[u] <= 200 || height <= 15 || weight <= 15 || vis[i][j] == 1)
+					if (size[u] <= 40 || height <= 15 || weight <= 5 || vis[i][j] == 1)
 						Target.g[i][j] = 0;
 				}
 				if (Type == "NORMAL") {
@@ -405,15 +249,15 @@ namespace NoiseReduction {
 		n = Target.n, m = Target.m;
 		s = 0;
 		GetBorder(Target);
-		//åˆå§‹åŒ–
+		//³õÊ¼»¯
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
 				vis[i][j] = -1;
-		//æå–è¾¹æ¡†
+		//ÌáÈ¡±ß¿ò
 		bfs();
 	}
-	int ToBalckWhite(ImageMatri Target, string Type) {
-		//äºŒå€¼åŒ–å¹¶é™å™ª
+	ImageMatri ToBalckWhite(ImageMatri Target, string Type,string ResultPath) {
+		//¶şÖµ»¯²¢½µÔë
 		memset(KeyPointCount, 0, sizeof(KeyPointCount));
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
@@ -424,165 +268,190 @@ namespace NoiseReduction {
 			}
 
 		if (Type == "MISS") {
-			GetKeyPoint(Target, MISSLINE1, MISSLINE2, Type);
+			GetKeyPoint(Target, Type);
 			if (DEBUG)Target.SaveGrey("KeyMISS.PNG");
+			if (KPC<=200)return Target;
 			Merge(Target, Type);
 		}
 		if (Type == "YELLOW") {
-			GetKeyPoint(Target, YELLOWLINE, YELLOWLINE, Type);
+			GetKeyPoint(Target, Type);
 			if (DEBUG)Target.SaveGrey("KeyYELLOW.PNG");
+			if (KPC <= 200)return Target;
 			Merge(Target, Type);
 		}
 		if (Type == "NORMAL") {
-			GetKeyPoint(Target, YELLOWLINE, YELLOWLINE, Type);
+			GetKeyPoint(Target, Type);
 			if (DEBUG)Target.SaveGrey("KeyNORMAL.PNG");
+			if (KPC <= 200)return Target;
 			Merge(Target, Type);
 		}
-		if(DEBUG)Target.SaveGrey("Res" + Type + ".PNG");
-		return 0;
+		if(CONSOLERES&&flag==0)Target.SaveGrey(ResultPath + "Res" + Type + ".PNG");
+		return Target;
 	}
 }
 namespace Split {
-	//æå–æœ‰æ•ˆéƒ¨åˆ†
+	//ÌáÈ¡ÓĞĞ§²¿·Ö
 }
 namespace VideoFunction {
 	void SkipFrame(double second) {
 		FrameNow += second * 1000.0 / VideoGap;
 	}
 }
-namespace Debug {
-	void ShowProcessMemoryUsageInfo()
-	{
-		HANDLE handle = GetCurrentProcess();
-		PROCESS_MEMORY_COUNTERS pmc;
-		GetProcessMemoryInfo(handle, &pmc, sizeof(pmc));
-		float memoryUsage_M = pmc.WorkingSetSize / (1024.0 * 1024.0);
-		float memoryUsage_K = pmc.WorkingSetSize / 1024.0;
-
-		std::cout << std::fixed << std::setprecision(2) << "å†…å­˜ä½¿ç”¨:" << memoryUsage_K << "K " << memoryUsage_M << "M" << std::endl;
+int PreCheck(cv::Mat Img) {
+	int r, g, b,is1=0,is2=0;
+	int pos1[5][3] = {{325,941},{577,1011},{807,1081}};
+	int pos2[5][3] = {{325,1600-941},{577,1600-1011},{807,1600-1081}};
+	int resolution = Img.cols;
+	for (int i = 0;i < 3;i++) {
+		int x = pos1[i][0] * resolution / 1600, y = pos1[i][1] * resolution / 1600;
+		r = (int)Img.at<cv::Vec3b>(x, y)[2], g = (int)Img.at<cv::Vec3b>(x, y)[1], b = (int)Img.at<cv::Vec3b>(x, y)[0];
+		double h, s, v;
+		rgb_to_hsv(r, g, b, h, s, v);
+		if (h>=0.47&&h<=0.72&&v<=0.96&&s>=0.3)
+			is1 |= 1;
 	}
-
+	for (int i = 0;i < 3;i++) {
+		int x = pos2[i][0] * resolution / 1600, y = pos2[i][1] * resolution / 1600;
+		r = (int)Img.at<cv::Vec3b>(x, y)[2], g = (int)Img.at<cv::Vec3b>(x, y)[1], b = (int)Img.at<cv::Vec3b>(x, y)[0];
+		double h, s, v;
+		rgb_to_hsv(r, g, b, h, s, v);
+		if (h >= 0.47 && h <= 0.72 && v <= 0.96 && s >= 0.3)
+			is2 |= 1;
+	}
+	return is1 && is2;
 }
-void ProcessImage(ImageMatri &Img) {
+void ProcessImage(cv::Mat img,string ResultPath = "") {
+	if (PreCheck(img) == 0) {
+		printf("Skiped\n");
+		return;
+	}
+	ImageMatri Img;
+	Img.ToMatri(img);
 	Img.resize(1600, 900);
+	if (DEBUG)Img.SaveImage("Frame2.PNG");
+	
 	Img.crop(1039, 111, 1565, 741);
 	if (DEBUG)Img.SaveImage("Frame.PNG");
 	flag = 1;
-	if(DEBUG)printf("FrameNow:%d\n", FrameNow);
-	NoiseReduction::Init(Img);
-	NoiseReduction::ShowFill(Img);
-	if(DEBUG)Debug::ShowProcessMemoryUsageInfo();
+	NoiseReduction::Init(Img);//27ms
 	if (skip) {
-		VideoFunction::SkipFrame(0.5);
 		return;
 	}
-	auto nimg = NoiseReduction::ToBalckWhite(Img, "NORMAL");
-
-	if (flag)nimg = NoiseReduction::ToBalckWhite(Img, "YELLOW");
-
-	if (flag)nimg = NoiseReduction::ToBalckWhite(Img, "MISS");
+	NoiseReduction::ShowFill(Img);
+	if (skip) {
+		return;
+	}
+	if(DEBUG)Debug::ShowProcessMemoryUsageInfo();
+	
+	auto nimg = NoiseReduction::ToBalckWhite(Img,  "YELLOW",ResultPath);
+	if (flag==0) {
+		return;
+	}
+	nimg = NoiseReduction::ToBalckWhite(Img, "NORMAL",ResultPath);
+	if (flag == 0) {
+		
+		return;
+	}
+	nimg = NoiseReduction::ToBalckWhite(Img, "MISS",ResultPath);
 
 	if (flag==0&&CONSOLE)Img.SaveImage(NumberToString(FrameNow)+"Get.PNG");
+	
 }
 
 int main() {
-	//cv::VideoCapture video("chaplin.mp4");
-	//éœ€è¦å®ç°çš„åŠŸèƒ½ï¼š
-	//ä»å·¥ä½œç›®å½•ä¸‹ data.in ä¸­è¯»å–éœ€è¦å¤„ç†çš„å›¾ç‰‡è·¯å¾„åˆ—è¡¨
-	//è¾“å‡ºç»“æœåˆ° data.out
-	//ç»“æœçš„å½¢å¼ä¸ºæ¯å¼ å›¾ç‰‡ä¸€ä¸ªå…­å…ƒç»„
-	//å…·ä½“åŠŸèƒ½ï¼š
-	//è¯»å–ä¸€å¼  16:9 å®Œæ•´æ¸¸æˆå›¾ç‰‡å¹¶è¿›è¡Œæœªå‘½ä¸­ï¼Œè·³å¼¹ï¼Œæš´å‡»ï¼Œå‘½ä¸­çš„åˆ¤å®š
-	// 
-	//å®ç°æ€è·¯ï¼š
-	//1.é™å™ªï¼š
-	//å¯¹äºè·³å¼¹å’Œæœªå‘½ä¸­å’Œæš´å‡»:
-	//(1)å¯¹ç›®æ ‡é¢œè‰²åŒºåŸŸå»ºç«‹å›å½’ç›´çº¿æ–¹ç¨‹ï¼Œå–å›ºå®šé˜ˆå€¼ä¸ºæ˜¯å¦æ˜¯å…³é”®ç‚¹çš„ç¬¬ä¸€ä¸ªåˆ¤æ®µä¾æ®
-	//(2)å»ºç«‹è¾¹æ¡†è‰²å½©ç‰¹å¾ç›´çº¿æ–¹ç¨‹ï¼Œå–åŸºäºåˆ†è¾¨ç‡çš„åŠ¨æ€é˜ˆå€¼ä½œä¸ºåˆ¤æ–­æ˜¯å¦ä¸ºè¾¹æ¡†çš„ä¾æ®
-	//(3)æŒ‰ç…§è¾¹æ¡†å¯¹åƒç´ ç‚¹è¿›è¡Œåˆ’åˆ†ï¼Œä»¥æ˜¯å¦åœ¨è¾¹æ¡†å†…ä½œä¸ºæ˜¯å¦ä¸ºå…³é”®ç‚¹çš„ç¬¬äºŒä¸ªåˆ¤æ–­ä¾æ®
-	//(4)æŒ‰ç…§æ˜¯å¦ä¸ºå…³é”®ç‚¹äºŒå€¼åŒ–ï¼Œå°†æ¯ä¸ªå…³é”®ç‚¹å—çŸ©é˜µåŒ–å¹¶æ¶ˆé™¤æ¤’ç›å™ªç‚¹
-	// 2.è¯†åˆ«ï¼š
-	//(1)ç®€å•æƒ…æ™¯è¯†åˆ«ï¼šåˆ¤æ–­æ˜¯å¦å­˜åœ¨çŸ©é˜µå—
-	//(2)å¤æ‚æƒ…æ™¯è¯†åˆ«ï¼š
-	// 
-	//
-	//<1>å°†å…³é”®éƒ¨åˆ†ä½œä¸ºçŸ©é˜µæå–å‡ºæ¥ï¼ŒæŒ‰ç…§ä½ç½®æ’åº
-	//<2>æç»˜å‡ºæ¯ä¸ªå…³é”®éƒ¨åˆ†çš„è½®å»“ï¼Œæå–ç‰¹å¾ç‚¹è¿›è¡ŒåŒ¹é…
-	//ç‰¹å¾ç‚¹é€‰å–å’ŒåŒ¹é…æ€ä¹ˆåšè¿˜æ²¡æƒ³å¥½
-	//
-	//
-	/*
-	int type;
-	while (cin >> type) {
-		cout << NumberToString(type) << endl;
-	}
-	string path = "C:\\Users\\Administrator\\Desktop\\Counts\\rec2\\10.PNG";
-	printf("è¯·è¾“å…¥å›¾ç‰‡è·¯å¾„\n");
-	cin >> path;
-	string Type;
-
-	printf("è¯·é€‰æ‹©ç±»å‹(1ä¸ºå‘½ä¸­æ»¤é•œï¼Œ2ä¸ºæš´å‡»æ»¤é•œ)");
-	cin >> type;
-	if (type == 1)Type = "MISS";
-	else Type = "YELLOW";
-
-	ImageMatri Image;
-	Image.read(path);
+	
+	/*cv::VideoCapture video("chaplin.mp4");
+	ĞèÒªÊµÏÖµÄ¹¦ÄÜ£º
+	´Ó¹¤×÷Ä¿Â¼ÏÂ data.in ÖĞ¶ÁÈ¡ĞèÒª´¦ÀíµÄÍ¼Æ¬Â·¾¶ÁĞ±í
+	Êä³ö½á¹ûµ½ data.out
+	½á¹ûµÄĞÎÊ½ÎªÃ¿ÕÅÍ¼Æ¬Ò»¸öÁùÔª×é
+	¾ßÌå¹¦ÄÜ£º
+	¶ÁÈ¡Ò»ÕÅ 16:9 ÍêÕûÓÎÏ·Í¼Æ¬²¢½øĞĞÎ´ÃüÖĞ£¬Ìøµ¯£¬±©»÷£¬ÃüÖĞµÄÅĞ¶¨
+	 
+	ÊµÏÖË¼Â·£º
+	1.½µÔë£º
+	¶ÔÓÚÌøµ¯ºÍÎ´ÃüÖĞºÍ±©»÷:
+	(1)¶ÔÄ¿±êÑÕÉ«ÇøÓò½¨Á¢»Ø¹éÖ±Ïß·½³Ì£¬È¡¹Ì¶¨ãĞÖµÎªÊÇ·ñÊÇ¹Ø¼üµãµÄµÚÒ»¸öÅĞ¶ÎÒÀ¾İ
+	(2)½¨Á¢±ß¿òÉ«²ÊÌØÕ÷Ö±Ïß·½³Ì£¬È¡»ùÓÚ·Ö±æÂÊµÄ¶¯Ì¬ãĞÖµ×÷ÎªÅĞ¶ÏÊÇ·ñÎª±ß¿òµÄÒÀ¾İ
+	(3)°´ÕÕ±ß¿ò¶ÔÏñËØµã½øĞĞ»®·Ö£¬ÒÔÊÇ·ñÔÚ±ß¿òÄÚ×÷ÎªÊÇ·ñÎª¹Ø¼üµãµÄµÚ¶ş¸öÅĞ¶ÏÒÀ¾İ
+	(4)°´ÕÕÊÇ·ñÎª¹Ø¼üµã¶şÖµ»¯£¬½«Ã¿¸ö¹Ø¼üµã¿é¾ØÕó»¯²¢Ïû³ı½·ÑÎÔëµã
+	 2.Ê¶±ğ£º
+	(1)¼òµ¥Çé¾°Ê¶±ğ£ºÅĞ¶ÏÊÇ·ñ´æÔÚ¾ØÕó¿é
+	(2)¸´ÔÓÇé¾°Ê¶±ğ£º
+	 
+	
+	<1>½«¹Ø¼ü²¿·Ö×÷Îª¾ØÕóÌáÈ¡³öÀ´£¬°´ÕÕÎ»ÖÃÅÅĞò
+	<2>Ãè»æ³öÃ¿¸ö¹Ø¼ü²¿·ÖµÄÂÖÀª£¬ÌáÈ¡ÌØÕ÷µã½øĞĞÆ¥Åä
+	ÌØÕ÷µãÑ¡È¡ºÍÆ¥ÅäÔõÃ´×ö»¹Ã»ÏëºÃ
 	*/
-	{
-		//Img.crop(1039, 111, 1565, 741);
-		MathMat[1].Set(555 - 111, 715 - 111, 1142 - 1039, 1382 - 1039);
-		MathMat[2].Set(499 - 111, 665 - 111, 1396 - 1039, 1590 - 1039);
-		MathMat[3].Set(377 - 111, 544 - 111, 1137 - 1039, 1354 - 1039);
-		MathMat[4].Set(307 - 111, 473 - 111, 1341 - 1039, 1562 - 1039);
-		MathMat[5].Set(227 - 111, 365 - 111, 983 - 1039, 1235 - 1039);
-		MathMat[6].Set(139 - 111, 307 - 111, 1221 - 1039, 1465 - 1039);
-	}
 
+	Debug::PrintWorkPath();
+	//Ò²¿ÉÒÔ½«buffer×÷ÎªÊä³ö²ÎÊı
+	
 	double start = clock(), timeall = 0, cost, FightGap;
 	ImageMatri Img;
-	//open video
-		
-	string VideoPath;
+	string VideoPath,ImagePath;
+	int FrameCount;
+	cv::Mat img;
+	for (int i = 1;i <= 10;i++) {
+		ImagePath = "C:\\Users\\Administrator\\Desktop\\" + NumberToString(i) + ".png";
+		img = cv::imread(ImagePath, cv::IMREAD_COLOR);
+		ProcessImage(img, NumberToString(i));
+
+	}
+
+	return 0;
 	ifstream in("data.in");
 	ofstream out("data.out");
 	in >> VideoPath >> FightGap;
-	cv::VideoCapture capture(VideoPath);
-	if (!capture.isOpened()) {
-		std::printf("Error,Couldn't Open The File\n");
-		return 0;
-	}
-	int FrameCount = capture.get(cv::CAP_PROP_FRAME_COUNT);
-	std::printf("FrameCount%d\n", FrameCount);
 
-	VideoRate = capture.get(cv::CAP_PROP_FPS);
-	VideoGap = 1000 / VideoRate;
-	printf("FPS:%lf\n",VideoRate);
-	VideoFunction::SkipFrame(0);
+	cv::VideoCapture capture(VideoPath);
+	{
+		capture.set(cv::CAP_PROP_POS_FRAMES,0);
+		capture >> img;
+		if (!capture.isOpened()) {
+			std::printf("Error,Couldn't Open The File\n");
+			return 0;
+		}
+		FrameCount = capture.get(cv::CAP_PROP_FRAME_COUNT);
+		std::printf("FrameCount%d\n", FrameCount);
+		VideoRate = capture.get(cv::CAP_PROP_FPS);
+		VideoGap = 1000.0 / VideoRate;
+		printf("FPS:%lf\n", VideoRate);
+	}
+	/*
+	double r, g, b, h, s, v;
+	cin >> r >> g >> b;
+	rgb_to_hsv(r, g, b, h, s, v);
+	printf("%lf,%lf,%lf", h, s, v);
+	*/
+	
 	int framein = 0, lst = 0,NowFight=1;
 	FightStatuNow = "Fight1:\n";
 	
-
+	VideoFunction::SkipFrame(0);
+	capture.set(cv::CAP_PROP_POS_FRAMES, FrameNow);
+	FrameNow = 2640;
 	while (1) {
-		if (framein > 10) {
+		if (framein > 100) {
 			framein = 0;
 			capture.release();
 			capture = cv::VideoCapture(VideoPath);
 			int FrameCount = capture.get(cv::CAP_PROP_FRAME_COUNT);
 		}
 		cv::Mat img;
-		ImageMatri Img;
 		capture.set(cv::CAP_PROP_POS_FRAMES, FrameNow);
-		capture >> img;
+		capture.read(img);
 		if (FrameNow-lst >= FightGap * VideoRate) {
 			out << FightStatuNow << "\n\n";
 			NowFight++;
 			FightStatuNow = "Fight"+NumberToString(NowFight)+":\n";
 			lst = FrameNow;
 		}
-		Img.ToMatri(img);
+		
+		printf("FrameNow:%d\n", FrameNow);
+		ProcessImage(img,NumberToString(FrameNow));
 		img.release();
-		ProcessImage(Img);
 
 		VideoFunction::SkipFrame(0.5);
 		if (flag == 0) {
@@ -590,19 +459,21 @@ int main() {
 			if(DEBUG)std::printf("Get at %lf\n", 1.0 * FrameNow / VideoRate);
 			VideoFunction::SkipFrame(1);
 		}
-		if (FrameNow >= FrameCount)break;
+		if (FrameNow >= FrameCount-5)break;
 
 	}
 	out << FightStatuNow << endl;
-	std::cout<<"\nå‘½ä¸­:" <<StatuCount[1];
-	std::cout<<"\næš´å‡»:"<< StatuCount[2];
+	std::cout<<"\nÃüÖĞ:" <<StatuCount[1];
+	std::cout<<"\n±©»÷:"<< StatuCount[2];
 	std::cout<<"\nMISS:"<< StatuCount[3];
-	std::printf("Total Frames:%d\n", FrameCount);
+	std::printf("\nTotal Frames:%d\n", FrameCount);
 	std::printf("FPS:%lf\n", VideoRate);
 	capture.release();
-	std::printf("TIME:%lf", clock() - start);
+	std::printf("TIME:%lf Ãë", (clock() - start)/1000);
 	in.close();
 	out.close();
 	return 0;
 	
 }
+
+
