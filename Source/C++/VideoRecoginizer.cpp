@@ -1,12 +1,38 @@
+ï»¿
+
 /*
 Creted:2022.2.16
 Author:Huan_yp/Phantom_Peng
-Function:Switch video to data in WSGR 
+
+Function:Switch video to data in WSGR
 Requirements:opencv4.5.1,MSVC,Win10
+éœ€è¦å®ç°çš„åŠŸèƒ½ï¼š
+	ä»å·¥ä½œç›®å½•ä¸‹ data.in ä¸­è¯»å–éœ€è¦å¤„ç†çš„å›¾ç‰‡è·¯å¾„åˆ—è¡¨
+	è¾“å‡ºç»“æœåˆ° data.out
+	ç»“æœçš„å½¢å¼ä¸ºæ¯å¼ å›¾ç‰‡ä¸€ä¸ªå…­å…ƒç»„
+	å…·ä½“åŠŸèƒ½ï¼š
+	è¯»å–ä¸€å¼  16:9 å®Œæ•´æ¸¸æˆå›¾ç‰‡å¹¶è¿›è¡Œæœªå‘½ä¸­ï¼Œè·³å¼¹ï¼Œæš´å‡»ï¼Œå‘½ä¸­çš„åˆ¤å®š
+
+	å®ç°æ€è·¯ï¼š
+	1.é™å™ªï¼š
+	å¯¹äºè·³å¼¹å’Œæœªå‘½ä¸­å’Œæš´å‡»:
+	(1)å¯¹ç›®æ ‡é¢œè‰²åŒºåŸŸå»ºç«‹å›å½’ç›´çº¿æ–¹ç¨‹ï¼Œå–å›ºå®šé˜ˆå€¼ä¸ºæ˜¯å¦æ˜¯å…³é”®ç‚¹çš„ç¬¬ä¸€ä¸ªåˆ¤æ®µä¾æ®
+	(2)å»ºç«‹è¾¹æ¡†è‰²å½©ç‰¹å¾ç›´çº¿æ–¹ç¨‹ï¼Œå–åŸºäºåˆ†è¾¨ç‡çš„åŠ¨æ€é˜ˆå€¼ä½œä¸ºåˆ¤æ–­æ˜¯å¦ä¸ºè¾¹æ¡†çš„ä¾æ®
+	(3)æŒ‰ç…§è¾¹æ¡†å¯¹åƒç´ ç‚¹è¿›è¡Œåˆ’åˆ†ï¼Œä»¥æ˜¯å¦åœ¨è¾¹æ¡†å†…ä½œä¸ºæ˜¯å¦ä¸ºå…³é”®ç‚¹çš„ç¬¬äºŒä¸ªåˆ¤æ–­ä¾æ®
+	(4)æŒ‰ç…§æ˜¯å¦ä¸ºå…³é”®ç‚¹äºŒå€¼åŒ–ï¼Œå°†æ¯ä¸ªå…³é”®ç‚¹å—çŸ©é˜µåŒ–å¹¶æ¶ˆé™¤æ¤’ç›å™ªç‚¹
+	 2.è¯†åˆ«ï¼š
+	(1)ç®€å•æƒ…æ™¯è¯†åˆ«ï¼šåˆ¤æ–­æ˜¯å¦å­˜åœ¨çŸ©é˜µå—
+	(2)å¤æ‚æƒ…æ™¯è¯†åˆ«ï¼š
+
+
+	<1>å°†å…³é”®éƒ¨åˆ†ä½œä¸ºçŸ©é˜µæå–å‡ºæ¥ï¼ŒæŒ‰ç…§ä½ç½®æ’åº
+	<2>æç»˜å‡ºæ¯ä¸ªå…³é”®éƒ¨åˆ†çš„è½®å»“ï¼Œæå–ç‰¹å¾ç‚¹è¿›è¡ŒåŒ¹é…
+	ç‰¹å¾ç‚¹é€‰å–å’ŒåŒ¹é…æ€ä¹ˆåšè¿˜æ²¡æƒ³å¥½
 */
 
 #include<Operation.h>
 #include<Debug.h>
+#include<RecognizeNumber.h>
 using namespace std;
 
 #define INF 1000000000
@@ -19,21 +45,17 @@ int CONSOLERES = 1;
 
 const int BIRGHT = 18;
 const int BOX[] = { {},{},{},{},{},{},{} };\
-const int BLUE1[] = {15,121,174};
-const int BLUE2[] = {64,212,223};
+const int BLUE1[] = { 15,121,174 };
+const int BLUE2[] = { 64,212,223 };
 
-int flag = 1, have,skip,FrameNow;
+int flag = 1, have, skip, FrameNow;
 int StatuCount[12];
 
 double VideoGap, VideoRate;
 
 string FightStatuNow;
-/*const Line MISSLINE1 = Line(0.8598438026744578, -16.77396336667041);
-const Line MISSLINE2 = Line(1.0137781000725163, -14.201957940536621);
-const Line YELLOWLINE = Line(0.80546875, -75.34296875);*/
-
 MathMatri MathMat[12];
-
+ofstream ot("res.out");
 string NumberToString(int num) {
 	if (num == 0)return "0";
 	string res = "";
@@ -42,33 +64,42 @@ string NumberToString(int num) {
 	if (num == 0)return res;
 	return NumberToString(num) + res;
 }
+
+namespace Split {
+	//æå–æœ‰æ•ˆéƒ¨åˆ†
+}
+namespace VideoFunction {
+	void SkipFrame(double second) {
+		FrameNow += second * 1000.0 / VideoGap;
+	}
+}
 namespace NoiseReduction {
-	//Õë¶Ô²»Í¬Çé¾°ÏÂµÄ½µÔë
-	const int N = 1605, M = 2305;
+	//é’ˆå¯¹ä¸åŒæƒ…æ™¯ä¸‹çš„é™å™ª
+	const int N = 1605, M = 705;
 	const int dx[] = { 1,1,0,0 }, dy[] = { 1,0,1,0 };
 	int Border = 20, n, m, cnt = 0, s = 0;
 	int rk[N][M], fa[N * M], size[N * M], KeyPointCount[10];
-	int maxn[N * M][2], minu[N * M][2], vis[N][M],KPC=0;
-	bool border[N][M], in[N][M];
+	int maxn[N * M][2], minu[N * M][2], vis[N][M], KPC = 0;
+	bool border[N][M], in[N][M],tvis[N][M];
+	int line[N];
 	queue<pair<int, int>> q;
-	//vis[i][j]:-1->Î´¼ÆËã,0:ÔÚ±ß¿òÄÚ,1:²»ÔÚ±ß¿òÄÚ
-	//µ­»¯Í¼Ïñ±ß½çÌáÈ¡Ğ§¹ûºÜ²î£¬±ß½çÌáÈ¡Ëã·¨Ğè¸Ä½ø
+	//vis[i][j]:-1->æœªè®¡ç®—,0:åœ¨è¾¹æ¡†å†…,1:ä¸åœ¨è¾¹æ¡†å†…
+	//æ·¡åŒ–å›¾åƒè¾¹ç•Œæå–æ•ˆæœå¾ˆå·®ï¼Œè¾¹ç•Œæå–ç®—æ³•éœ€æ”¹è¿›
 	bool ok(int x, int y) {
 		return x >= 0 && y >= 0 && x < n&& y < m;
 	}
+
 	void bfs() {
-		//ÕâÀï¹ÒÁË£¬dfs ËÑ²»³öÀ´
-		//rewiting...
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
 				if (border[i][j])
 					vis[i][j] = 0;
 		for (int i = 0;i < n;i++) {
 			if (vis[i][0] == -1)q.push(make_pair(i, 0)), vis[i][0] = 1;
-			if (vis[i][m-1] == -1)q.push(make_pair(i, m-1)), vis[i][m-1] = 1;
+			if (vis[i][m - 1] == -1)q.push(make_pair(i, m - 1)), vis[i][m - 1] = 1;
 		}
 		for (int i = 0;i < m;i++) {
-			if (vis[n-1][i] == -1)q.push(make_pair(n-1, i)), vis[n-1][i] = 1;
+			if (vis[n - 1][i] == -1)q.push(make_pair(n - 1, i)), vis[n - 1][i] = 1;
 			if (vis[0][i] == -1)q.push(make_pair(0, i)), vis[0][i] = 1;
 		}
 		const int dxx[] = { 1,-1,0,0, }, dyy[] = { 0,0,1,-1 };
@@ -86,6 +117,17 @@ namespace NoiseReduction {
 			for (int j = 0;j < m;j++)
 				if (vis[i][j] == -1)
 					vis[i][j] = 0;
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++) {
+				if (border[i][j])
+					vis[i][j] = 1;
+				tvis[i][j] = vis[i][j];
+			}
+	}
+	void SetBorder() {
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++)
+				vis[i][j] = tvis[i][j];
 	}
 	int find(int x) {
 		return fa[x] == x ? x : fa[x] = find(fa[x]);
@@ -103,16 +145,17 @@ namespace NoiseReduction {
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
 				img.g[i][j] = 255 * border[i][j];
-		//Border Îª°×É«
-		if(DEBUG)img.SaveGrey("Border.PNG");
+		//Border ä¸ºç™½è‰²
+		if (DEBUG)img.SaveGrey("Border.PNG");
 	}
-	bool CheckBorder(const int* a) {
+	bool CheckBorder(const short* a, int limit) {
+
 		double r = a[0], g = a[1], b = a[2];
-		if ((abs(r - g) <= 60 && abs(g - b) <= 60 && abs(r - b) <= 60))
+		if ((abs(r - g) <= limit && abs(g - b) <= limit && abs(r - b) <= limit))
 			return 1;
 		return 0;
 	}
-	bool CheckWhite(const int* a) {
+	bool CheckWhite(const short* a) {
 		double r = a[0], g = a[1], b = a[2];
 		if ((abs(r - g) <= 30 && abs(g - b) <= 30 && abs(r - b) <= 30))
 			return 1;
@@ -123,43 +166,44 @@ namespace NoiseReduction {
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
 				Target.g[i][j] = vis[i][j] * 255;
-				if (Target.g[i][j]==0)count++;
+				if (Target.g[i][j] == 0)count++;
 			}
-		//ºÚÉ«ÎªÓĞĞ§
+		//é»‘è‰²ä¸ºæœ‰æ•ˆ
 		if (DEBUG)Target.SaveGrey("Fill.PNG");
 		if (count == 0 || count > n * m / 3)
 			skip = 1;
 	}
 	void GetKeyPoint(ImageMatri& Target, string Type, double DisLimit = 18) {
-		//´«ÈëÒ»¸öÍ¼ĞÎ¾ØÕó£¬·ÖÎöÌØÕ÷µã²¢Ğ´Èë»Ò¶ÈÖµ
-		KPC =0;
+		//ä¼ å…¥ä¸€ä¸ªå›¾å½¢çŸ©é˜µï¼Œåˆ†æç‰¹å¾ç‚¹å¹¶å†™å…¥ç°åº¦å€¼
+		KPC = 0;
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
-				if (Type == "MISS") {
+				
+				if (vis[i][j]) {
 					Target.g[i][j] = 0;
+					continue;
+				}
+				if (Type == "MISS") {
 					double h, s, v;
+					Target.g[i][j] = 0;
 					rgb_to_hsv(Target.a[i][j][0], Target.a[i][j][1], Target.a[i][j][2], h, s, v);
-					if (((h <= 0.1||h>=0.95) && s >= 0.3 && Target.a[i][j][2] <= 168 && v>=0.55))
+					if (((h <= 0.1 || h >= 0.97) && s >= 0.3 && Target.a[i][j][2] <= 168 && v >= 0.45))
 						Target.g[i][j] = 255, KPC++;
 					else
 						Target.g[i][j] = 0;
 				}
 				if (Type == "YELLOW") {
+					Target.g[i][j] = 0;
 					Point p = Point(Target.a[i][j][1], Target.a[i][j][2]);
 					double h, s, v;
-					rgb_to_hsv(Target.a[i][j][0], Target.a[i][j][1], Target.a[i][j][2],h,s,v);
-					if ((h<=0.2&&h>=0.08&&s>=0.3&&Target.a[i][j][2]<=168 && v >= 0.55))
+					rgb_to_hsv(Target.a[i][j][0], Target.a[i][j][1], Target.a[i][j][2], h, s, v);
+					if ((h <= 0.21 && h >= 0.08 && s >= 0.3 && Target.a[i][j][2] <= 168 && v >= 0.6))
 						Target.g[i][j] = 255, KPC++;
-					else
-						Target.g[i][j] = 0;
 				}
 				if (Type == "NORMAL") {
-					//if (vis[i][j] == 0)g[i][j] = 255;
-					//else g[i][j] = 0;
-
-					if (Target.g[i][j] <= 128) {
+					if (Target.g[i][j] <= 168) { 
 						Target.g[i][j] = 0;
-						continue;
+						continue; 
 					}
 					if (CheckWhite(Target.a[i][j]))
 						Target.g[i][j] = 255, KPC++;
@@ -168,22 +212,33 @@ namespace NoiseReduction {
 				}
 			}
 	}
-	void GetBorder(const ImageMatri& Target) {
+	void GetBorder(const ImageMatri& Target,double BorderBase = 35) {
 		skip = 0;
 		int BorderCount = 0;
 		//Border = 1.0 * 35 / (1.0 * Target.resolution / 1600);
-		Border = 1.0 * 35 / (1.0 * 1600 / Target.resolution);
+		Border = 1.0 * BorderBase * pow((1.0 * 1600 / Target.resolution),0.63);
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
-				border[i][j] = Target.g[i][j] <= Border && CheckBorder(Target.a[i][j]);
+				int maxn = max(max(Target.a[i][j][0],Target.a[i][j][1]), Target.a[i][j][2]);
+				border[i][j] = Target.g[i][j] <= Border&&maxn<=Border * 1.7;
 				BorderCount += border[i][j];
 			}
+		for(int times = 1;times <= 3;times++)
+			for (int i = 1;i < n;i++)
+				for (int j = 1;j < m;j++) {
+					int maxn = max(max(Target.a[i][j][0], Target.a[i][j][1]), Target.a[i][j][2]);
+					if (border[i][j] == 0 && (border[i + 1][j] + border[i - 1][j] + border[i][j + 1] + border[i][j - 1]
+						+ border[i + 1][j + 1] + border[i + 1][j - 1] + border[i - 1][j - 1] + border[i - 1][j + 1]) >= 2) {
+						border[i][j] = Target.g[i][j] <= Border * 1.5 && CheckBorder(Target.a[i][j], Border * 3) && maxn <= Border * 1.7;
+						BorderCount += border[i][j];
+					}
+				}
 		if (DEBUG)ShowBorder();
-		if (BorderCount >= n * m /3||BorderCount<=100)skip = 1;
+		if (BorderCount >= n * m / 3 || BorderCount <= 100)skip = 1;
 	}
-	void Merge(ImageMatri& Target, string Type) {
-		//ºÏ²¢¹Ø¼üµã
-		cnt = 0;
+	void Merge(ImageMatri& Target, string Type, int record = 0) {
+		//åˆå¹¶å…³é”®ç‚¹
+		cnt = 0;flag = 1;
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
 				if (vis[i][j])
@@ -193,24 +248,47 @@ namespace NoiseReduction {
 			for (int j = 0;j < m;j++) {
 				for (int k = 0;k < 4;k++) {
 					int tox = i + dx[k], toy = j + dy[k];
-					if (Target.g[i][j] == Target.g[tox][toy]&&tox < n &&toy < m)
-					merge(rk[i][j], rk[tox][toy]);
-				}
-			}
-		for (int i = 0;i < n;i++)
-			for (int j = 0;j < m;j++) {
-				for (int k = 0;k < 4;k++) {
-					int tox = i + dx[k]*2, toy = j + dy[k]*2;
-					int u = find(rk[i][j]), v = find(rk[tox][toy]);
-					if (Target.g[i][j] == Target.g[tox][toy] && tox < n && toy < m&&size[u]<=150&&size[v]<=150)
+					if (Target.g[i][j] == Target.g[tox][toy] && tox < n && toy < m)
 						merge(rk[i][j], rk[tox][toy]);
 				}
 			}
-		have = 0;
+		if (Type == "MISS") {
+			for (int i = 0;i < n;i++)
+				for (int j = 0;j < m;j++) {
+					for (int k = 0;k < 4;k++) {
+						int tox = i + dx[k] * 2, toy = j + dy[k] * 2;
+						int u = find(rk[i][j]), v = find(rk[tox][toy]);
+						if (Target.g[i][j] == Target.g[tox][toy] && tox < n && toy < m && size[u] <= 150 && size[v] <= 150)
+							merge(rk[i][j], rk[tox][toy]);
+					}
+				}
+		}
+		int cntp=0;
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
-				if (Target.g[i][j])
-					have = 1;
+				int u = rk[i][j];
+				if (find(u) != u||Target.g[i][j]==0||size[u] < 50)continue;
+				line[++cntp] = maxn[u][0]+minu[u][0]>>1;
+			}
+		if (Type == "NORMAL" && cntp < 2)return;
+		if (Type == "MISS" && cntp < 2)return;
+		if (Type == "YELLOW" && cntp < 3)return;
+		for(int i=0;i<n;i++)
+			for (int j = 0;j < m;j++) {
+				int u = rk[i][j];
+				if (find(u) != u || Target.g[i][j] == 0 || size[u] < 100)continue;
+				int mincount=0,pos = maxn[u][0]+minu[u][0]>>1;
+				for (int k = 1;k <= cntp;k++)
+					if (abs(pos-line[k]) <= 7)mincount++;
+				if (mincount < 2)fa[u] = 0;
+			}
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++) {
+				if (Target.g[i][j] == 0)continue;
+				if (find(rk[i][j]) == 0) {
+					Target.g[i][j] = 0;
+					continue;
+				}
 				int u = find(rk[i][j]);
 				int height = maxn[u][0] - minu[u][0], weight = maxn[u][1] - minu[u][1];
 				if (Type == "MISS") {
@@ -218,47 +296,78 @@ namespace NoiseReduction {
 						Target.g[i][j] = 0;
 				}
 				if (Type == "YELLOW") {
-					if (size[u] <= 40 || height <= 15 || weight <= 5 || vis[i][j] == 1)
+					if (size[u] <= 100 || height <= 15 || weight <= 5 || weight > 37 ||height > 37 || vis[i][j] == 1)
 						Target.g[i][j] = 0;
 				}
 				if (Type == "NORMAL") {
-					if (size[u] >= 500 || size[u] <= 50 || height <= 10 || weight <= 5 || vis[i][j] == 1)
+					if (size[u] >= 500 || size[u] <= 100 || height <= 20 || weight <= 5 || height > 37 || weight > 37 || vis[i][j] == 1)
 						Target.g[i][j] = 0;
 				}
-				if (u == rk[i][j] && Target.g[i][j]) {
-					cnt++;
+				if (Target.g[i][j]) {
+					flag = 0;
+					if (rk[i][j] == u)
+						cnt++;
 					for (int k = 1;k <= 6;k++) {
 						if (MathMat[k].in(i, j))
 							KeyPointCount[k]++;
 					}
 				}
 			}
+		if (record == 0)return;
 		if (cnt) {
-			flag = 0;
-			printf("Type:");
-			if (Type == "MISS")StatuCount[3]++,std::cout<<Type<<",Amount:"<< StatuCount[3]<<endl;
-			if (Type == "YELLOW")StatuCount[2]++,std::cout << Type << ",Amount:" << StatuCount[2] << endl;
-			if (Type == "NORMAL")StatuCount[1]++,std::cout << Type << ",Amount:" << StatuCount[1] << endl;
+			if (Type == "MISS")StatuCount[3]++, std::cout << Type << ",Amount:" << StatuCount[3] << endl;
+			if (Type == "YELLOW")StatuCount[2]++, std::cout << Type << ",Amount:" << StatuCount[2] << endl;
+			if (Type == "NORMAL")StatuCount[1]++, std::cout << Type << ",Amount:" << StatuCount[1] << endl;
 		}
+		int maxn = 0;
+		for (int k = 1;k <= 6;k++)cmax(maxn, KeyPointCount[k]);
 		for (int k = 1;k <= 6;k++) {
-			if (KeyPointCount[k] >= 1)
-				FightStatuNow += "Position:"+NumberToString(k)+",Type:"+Type+"\n";
+			if (KeyPointCount[k] >= 50 && maxn == KeyPointCount[k])
+				FightStatuNow += "Position:" + NumberToString(k) + ",Type:" + Type + ",";
 		}
 	}
-	void Init(ImageMatri& Target) {
+	void Init(const ImageMatri& Target,double BorderBase=35) {
 		n = Target.n, m = Target.m;
-		s = 0;
-		GetBorder(Target);
-		//³õÊ¼»¯
+		s = 0;flag = 1;
+		GetBorder(Target,BorderBase);
+		//åˆå§‹åŒ–
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++)
 				vis[i][j] = -1;
-		//ÌáÈ¡±ß¿ò
+		//æå–è¾¹æ¡†
 		bfs();
 	}
-	ImageMatri ToBalckWhite(ImageMatri Target, string Type,string ResultPath) {
-		//¶şÖµ»¯²¢½µÔë
-		memset(KeyPointCount, 0, sizeof(KeyPointCount));
+	void ProcessFill(const ImageMatri &Target,string Type) {
+		int s = 0;
+		for (int i = 0;i <n;i++)
+			for (int j = 0;j < m;j++) {
+				rk[i][j] = ++s;
+				fa[s] = s, size[s] = Target.g[i][j] == 0;
+			}
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++) {
+				for (int k = 0;k < 4;k++) {
+					int tox = i + dx[k], toy = j + dy[k];
+					if (vis[i][j] == vis[tox][toy] && tox < n && toy < m) {
+						
+						int u = find(rk[i][j]), v = find(rk[tox][toy]);
+						if (u == v)continue;
+						fa[u] = v;size[v] += size[u];
+					}
+				}
+			}
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++)
+				if (find(rk[i][j]) == rk[i][j] && size[rk[i][j]] >= 300 &&  vis[i][j] == 0)
+					fa[rk[i][j]] = 0;
+		for (int i = 0;i < n;i++)
+			for (int j = 0;j < m;j++)
+				if (fa[find(rk[i][j])] == 0)
+					vis[i][j] = 1;
+	}
+	void InitDSU() {
+		int s = 0;
+		fa[0] = 0;
 		for (int i = 0;i < n;i++)
 			for (int j = 0;j < m;j++) {
 				rk[i][j] = ++s;
@@ -266,149 +375,207 @@ namespace NoiseReduction {
 				maxn[s][0] = minu[s][0] = i;
 				minu[s][1] = maxn[s][1] = j;
 			}
+	}
+	ImageMatri ToBalckWhite(ImageMatri Target, string Type, string ResultPath, int redetect = 1) {
+		//äºŒå€¼åŒ–å¹¶é™å™ª
+		flag = 1;
+		memset(KeyPointCount, 0, sizeof(KeyPointCount));
+		InitDSU();
 
 		if (Type == "MISS") {
 			GetKeyPoint(Target, Type);
 			if (DEBUG)Target.SaveGrey("KeyMISS.PNG");
-			if (KPC<=200)return Target;
-			Merge(Target, Type);
+			if (KPC <= 200)return Target;
+			ProcessFill(Target, Type);
+			InitDSU();
+			Merge(Target, Type, redetect);
 		}
 		if (Type == "YELLOW") {
 			GetKeyPoint(Target, Type);
 			if (DEBUG)Target.SaveGrey("KeyYELLOW.PNG");
 			if (KPC <= 200)return Target;
-			Merge(Target, Type);
+			ProcessFill(Target, Type);
+			if(DEBUG)ShowFill(Target);
+			InitDSU();
+			Merge(Target, Type, redetect);
 		}
 		if (Type == "NORMAL") {
 			GetKeyPoint(Target, Type);
 			if (DEBUG)Target.SaveGrey("KeyNORMAL.PNG");
+			ProcessFill(Target, Type);
+			InitDSU();
 			if (KPC <= 200)return Target;
-			Merge(Target, Type);
+			Merge(Target, Type, redetect);
 		}
-		if(CONSOLERES&&flag==0)Target.SaveGrey(ResultPath + "Res" + Type + ".PNG");
+		if (CONSOLERES && flag == 0 && redetect)Target.SaveGrey(ResultPath + "Res" + Type + ".PNG");
 		return Target;
 	}
 }
-namespace Split {
-	//ÌáÈ¡ÓĞĞ§²¿·Ö
-}
-namespace VideoFunction {
-	void SkipFrame(double second) {
-		FrameNow += second * 1000.0 / VideoGap;
-	}
-}
 int PreCheck(cv::Mat Img) {
-	int r, g, b,is1=0,is2=0;
-	int pos1[5][3] = {{325,941},{577,1011},{807,1081}};
-	int pos2[5][3] = {{325,1600-941},{577,1600-1011},{807,1600-1081}};
+	int r, g, b, is1 = 1, is2 = 1;
+	int pos1[5][3] = { {325,941},{577,1011},{807,1081},{450,800} };
+	int pos2[5][3] = { {325,1600 - 941},{577,1600 - 1011},{807,1600 - 1081},{450,800} };
 	int resolution = Img.cols;
-	for (int i = 0;i < 3;i++) {
+	for (int i = 0;i < 4;i++) {
 		int x = pos1[i][0] * resolution / 1600, y = pos1[i][1] * resolution / 1600;
 		r = (int)Img.at<cv::Vec3b>(x, y)[2], g = (int)Img.at<cv::Vec3b>(x, y)[1], b = (int)Img.at<cv::Vec3b>(x, y)[0];
 		double h, s, v;
 		rgb_to_hsv(r, g, b, h, s, v);
-		if (h>=0.47&&h<=0.72&&v<=0.96&&s>=0.3)
-			is1 |= 1;
+		if (!(h >= 0.47 && h <= 0.72 && v <= 0.98 && s >= 0.3 && v >= 0.4))
+			is1 &= 0;
 	}
 	for (int i = 0;i < 3;i++) {
 		int x = pos2[i][0] * resolution / 1600, y = pos2[i][1] * resolution / 1600;
 		r = (int)Img.at<cv::Vec3b>(x, y)[2], g = (int)Img.at<cv::Vec3b>(x, y)[1], b = (int)Img.at<cv::Vec3b>(x, y)[0];
 		double h, s, v;
 		rgb_to_hsv(r, g, b, h, s, v);
-		if (h >= 0.47 && h <= 0.72 && v <= 0.96 && s >= 0.3)
-			is2 |= 1;
+		if (!(h >= 0.47 && h <= 0.72 && v <= 0.98 && s >= 0.3))
+			is2 &= 0;
 	}
 	return is1 && is2;
 }
-void ProcessImage(cv::Mat img,string ResultPath = "") {
+int RecognizeNumber(ImageMatri& Img, string Type) {
+	using namespace NoiseReduction;
+	int failed = 0;
+	MathMatri mat[100];int cnt = 0, allcnt = 0;
+	int num = 0, limitmax = 0;
+	for (int i = 0;i < n;i++)
+		for (int j = 0;j < m;j++) {
+			int u = rk[i][j];
+			if (find(u) != u || Img.g[i][j] == 0)continue;
+			cmax(limitmax, maxn[u][0]);
+		}
+	for (int i = 0;i < n;i++)
+		for (int j = 0;j < m;j++) {
+			int u = rk[i][j];
+			if (find(u) != u || Img.g[i][j] == 0)continue;
+			if (limitmax - maxn[u][0] <= 10)
+				mat[++cnt].Set(minu[u][0], maxn[u][0], minu[u][1], maxn[u][1]);
+		}
+	if (allcnt == 1 && Type == "YELLOW")failed = 1;
+	sort(mat + 1, mat + cnt + 1);
+	for (int i = 1;i <= cnt;i++) {
+		NumberMatri obj;
+		if (Type == "NORMAL") {
+			obj.init(Img, mat[i].t, mat[i].b, mat[i].l, mat[i].r, 0);
+		}
+		else {
+			if (cnt == 2 && i == 1) {
+				obj.init(Img, mat[i].t, mat[i].b, mat[i].l, mat[i].r, 2);
+			}
+			else
+				if (cnt == 3 && i == 1)
+					obj.init(Img, mat[i].t, mat[i].b, mat[i].l, mat[i].r, 0);
+				else
+					obj.init(Img, mat[i].t, mat[i].b, mat[i].l, mat[i].r, 1);
+		}
+		if (DEBUG) {
+			ImageMatri tmp = Img;
+			auto img = tmp.ToGreyImage();
+			tmp.ToMatri(img);
+			img.release();
+			tmp.crop(mat[i].l, mat[i].t, mat[i].r, mat[i].b);
+			tmp.SaveGrey("Res" + NumberToString(i) + ".PNG");
+		}
+		num = num * 10 + obj.TestNumber();
+	}
+	ot << num << endl;
+	printf("Number:%d\n", num);
+	FightStatuNow += "Value:" + NumberToString(num) + ",Frame:" + NumberToString(FrameNow) + "\n";
+	return failed;
+}
+void ReProcess(ImageMatri Img,string Type) {
+	if (Type == "MISS") {
+		NoiseReduction::Init(Img,50);//27ms
+		NoiseReduction::ShowFill(Img);
+		auto nimg = NoiseReduction::ToBalckWhite(Img, Type, NumberToString(FrameNow));
+		if (flag == 1)printf("Boom!");
+	}
+	if (Type == "YELLOW") {
+		NoiseReduction::Init(Img, 60);//27ms
+		NoiseReduction::ShowFill(Img);
+		auto nimg = NoiseReduction::ToBalckWhite(Img, Type, NumberToString(FrameNow));
+		if (flag == 1)printf("Boom!");
+		RecognizeNumber(nimg,Type);
+	}
+	if (Type == "NORMAL") {
+		NoiseReduction::Init(Img, 45);//27ms
+		NoiseReduction::ShowFill(Img);
+		auto nimg = NoiseReduction::ToBalckWhite(Img, Type, NumberToString(FrameNow));
+		if (flag == 1)printf("Boom!");
+		RecognizeNumber(nimg, Type);
+	}
+}
+void ProcessImage(cv::Mat img, string ResultPath = "") {
+	printf("Time:%lf,Frame:%d\n",FrameNow/VideoRate,FrameNow);
 	if (PreCheck(img) == 0) {
 		printf("Skiped\n");
 		return;
 	}
 	ImageMatri Img;
+
 	Img.ToMatri(img);
+	Img.resolution = img.cols;
 	Img.resize(1600, 900);
 	if (DEBUG)Img.SaveImage("Frame2.PNG");
-	
-	Img.crop(1039, 111, 1565, 741);
-	if (DEBUG)Img.SaveImage("Frame.PNG");
-	flag = 1;
-	NoiseReduction::Init(Img);//27ms
-	if (skip) {
-		return;
-	}
-	NoiseReduction::ShowFill(Img);
-	if (skip) {
-		return;
-	}
-	if(DEBUG)Debug::ShowProcessMemoryUsageInfo();
-	
-	auto nimg = NoiseReduction::ToBalckWhite(Img,  "YELLOW",ResultPath);
-	if (flag==0) {
-		return;
-	}
-	nimg = NoiseReduction::ToBalckWhite(Img, "NORMAL",ResultPath);
-	if (flag == 0) {
-		
-		return;
-	}
-	nimg = NoiseReduction::ToBalckWhite(Img, "MISS",ResultPath);
 
-	if (flag==0&&CONSOLE)Img.SaveImage(NumberToString(FrameNow)+"Get.PNG");
+	Img.crop(1039, 111, 1590, 741);
+	if (DEBUG)Img.SaveImage("Frame.PNG");
+	NoiseReduction::Init(Img,42);//27ms
+	NoiseReduction::ShowFill(Img);
+
+	//if (DEBUG)Debug::ShowProcessMemoryUsageInfo();
+	NoiseReduction::SetBorder();
+	auto nimg = NoiseReduction::ToBalckWhite(Img, "YELLOW", ResultPath,0);
+	if (flag == 0) {
+		ReProcess(Img,"YELLOW");
+		if (CONSOLE)Img.SaveImage(NumberToString(FrameNow) + "Get.PNG");
+		VideoFunction::SkipFrame(1.5);
+		return;
+	}
+	NoiseReduction::SetBorder();
+	nimg = NoiseReduction::ToBalckWhite(Img, "MISS", ResultPath, 0);
+	if (flag == 0) {
+		if (CONSOLE)Img.SaveImage(NumberToString(FrameNow) + "Get.PNG");
+		VideoFunction::SkipFrame(1.5);
+		ReProcess(Img, "MISS");
+		return;
+	}
+	NoiseReduction::SetBorder();
+	nimg = NoiseReduction::ToBalckWhite(Img, "NORMAL", ResultPath,0);
+	if (flag == 0) {
+		ReProcess(Img, "NORMAL");
+		if (CONSOLE)Img.SaveImage(NumberToString(FrameNow) + "Get.PNG");
+		VideoFunction::SkipFrame(1.5);
+		return;
+	}
+	
+	
 	
 }
-
 int main() {
 	
-	/*cv::VideoCapture video("chaplin.mp4");
-	ĞèÒªÊµÏÖµÄ¹¦ÄÜ£º
-	´Ó¹¤×÷Ä¿Â¼ÏÂ data.in ÖĞ¶ÁÈ¡ĞèÒª´¦ÀíµÄÍ¼Æ¬Â·¾¶ÁĞ±í
-	Êä³ö½á¹ûµ½ data.out
-	½á¹ûµÄĞÎÊ½ÎªÃ¿ÕÅÍ¼Æ¬Ò»¸öÁùÔª×é
-	¾ßÌå¹¦ÄÜ£º
-	¶ÁÈ¡Ò»ÕÅ 16:9 ÍêÕûÓÎÏ·Í¼Æ¬²¢½øĞĞÎ´ÃüÖĞ£¬Ìøµ¯£¬±©»÷£¬ÃüÖĞµÄÅĞ¶¨
-	 
-	ÊµÏÖË¼Â·£º
-	1.½µÔë£º
-	¶ÔÓÚÌøµ¯ºÍÎ´ÃüÖĞºÍ±©»÷:
-	(1)¶ÔÄ¿±êÑÕÉ«ÇøÓò½¨Á¢»Ø¹éÖ±Ïß·½³Ì£¬È¡¹Ì¶¨ãĞÖµÎªÊÇ·ñÊÇ¹Ø¼üµãµÄµÚÒ»¸öÅĞ¶ÎÒÀ¾İ
-	(2)½¨Á¢±ß¿òÉ«²ÊÌØÕ÷Ö±Ïß·½³Ì£¬È¡»ùÓÚ·Ö±æÂÊµÄ¶¯Ì¬ãĞÖµ×÷ÎªÅĞ¶ÏÊÇ·ñÎª±ß¿òµÄÒÀ¾İ
-	(3)°´ÕÕ±ß¿ò¶ÔÏñËØµã½øĞĞ»®·Ö£¬ÒÔÊÇ·ñÔÚ±ß¿òÄÚ×÷ÎªÊÇ·ñÎª¹Ø¼üµãµÄµÚ¶ş¸öÅĞ¶ÏÒÀ¾İ
-	(4)°´ÕÕÊÇ·ñÎª¹Ø¼üµã¶şÖµ»¯£¬½«Ã¿¸ö¹Ø¼üµã¿é¾ØÕó»¯²¢Ïû³ı½·ÑÎÔëµã
-	 2.Ê¶±ğ£º
-	(1)¼òµ¥Çé¾°Ê¶±ğ£ºÅĞ¶ÏÊÇ·ñ´æÔÚ¾ØÕó¿é
-	(2)¸´ÔÓÇé¾°Ê¶±ğ£º
-	 
 	
-	<1>½«¹Ø¼ü²¿·Ö×÷Îª¾ØÕóÌáÈ¡³öÀ´£¬°´ÕÕÎ»ÖÃÅÅĞò
-	<2>Ãè»æ³öÃ¿¸ö¹Ø¼ü²¿·ÖµÄÂÖÀª£¬ÌáÈ¡ÌØÕ÷µã½øĞĞÆ¥Åä
-	ÌØÕ÷µãÑ¡È¡ºÍÆ¥ÅäÔõÃ´×ö»¹Ã»ÏëºÃ
-	*/
-
+	InitMathMatri(MathMat, 1600);
 	Debug::PrintWorkPath();
-	//Ò²¿ÉÒÔ½«buffer×÷ÎªÊä³ö²ÎÊı
-	
+	//ä¹Ÿå¯ä»¥å°†bufferä½œä¸ºè¾“å‡ºå‚æ•°
+
 	double start = clock(), timeall = 0, cost, FightGap;
 	ImageMatri Img;
-	string VideoPath,ImagePath;
+	string VideoPath, ImagePath;
 	int FrameCount;
 	cv::Mat img;
-	for (int i = 1;i <= 10;i++) {
-		ImagePath = "C:\\Users\\Administrator\\Desktop\\" + NumberToString(i) + ".png";
-		img = cv::imread(ImagePath, cv::IMREAD_COLOR);
-		ProcessImage(img, NumberToString(i));
 
-	}
-
-	return 0;
 	ifstream in("data.in");
 	ofstream out("data.out");
 	in >> VideoPath >> FightGap;
 
 	cv::VideoCapture capture(VideoPath);
+	//cout<<"resolution:" << capture.get(cv::CAP_PROP_XI_WIDTH) << endl;
 	{
-		capture.set(cv::CAP_PROP_POS_FRAMES,0);
+		capture.set(cv::CAP_PROP_POS_FRAMES, 0);
 		capture >> img;
+		printf("width:%d\n", img.cols);
 		if (!capture.isOpened()) {
 			std::printf("Error,Couldn't Open The File\n");
 			return 0;
@@ -419,19 +586,12 @@ int main() {
 		VideoGap = 1000.0 / VideoRate;
 		printf("FPS:%lf\n", VideoRate);
 	}
-	/*
-	double r, g, b, h, s, v;
-	cin >> r >> g >> b;
-	rgb_to_hsv(r, g, b, h, s, v);
-	printf("%lf,%lf,%lf", h, s, v);
-	*/
-	
-	int framein = 0, lst = 0,NowFight=1;
+
+	int framein = 0, lst = 0, NowFight = 1;
 	FightStatuNow = "Fight1:\n";
-	
+
 	VideoFunction::SkipFrame(0);
 	capture.set(cv::CAP_PROP_POS_FRAMES, FrameNow);
-	FrameNow = 2640;
 	while (1) {
 		if (framein > 100) {
 			framein = 0;
@@ -442,38 +602,34 @@ int main() {
 		cv::Mat img;
 		capture.set(cv::CAP_PROP_POS_FRAMES, FrameNow);
 		capture.read(img);
-		if (FrameNow-lst >= FightGap * VideoRate) {
+
+		if (FrameNow - lst >= FightGap * VideoRate) {
 			out << FightStatuNow << "\n\n";
 			NowFight++;
-			FightStatuNow = "Fight"+NumberToString(NowFight)+":\n";
+			FightStatuNow = "Fight" + NumberToString(NowFight) + ":\n";
 			lst = FrameNow;
 		}
-		
-		printf("FrameNow:%d\n", FrameNow);
-		ProcessImage(img,NumberToString(FrameNow));
+		flag = 1;
+		if (FrameNow / (FrameCount/20) > (FrameNow-5) / (FrameCount / 20))printf("Process:%d %% \n", FrameNow * 5 / (FrameCount / 20));
+		ProcessImage(img, NumberToString(FrameNow));
 		img.release();
 
 		VideoFunction::SkipFrame(0.5);
-		if (flag == 0) {
-			lst = FrameNow;
-			if(DEBUG)std::printf("Get at %lf\n", 1.0 * FrameNow / VideoRate);
-			VideoFunction::SkipFrame(1);
-		}
-		if (FrameNow >= FrameCount-5)break;
+		if (FrameNow >= FrameCount - 12)break;
 
 	}
 	out << FightStatuNow << endl;
-	std::cout<<"\nÃüÖĞ:" <<StatuCount[1];
-	std::cout<<"\n±©»÷:"<< StatuCount[2];
-	std::cout<<"\nMISS:"<< StatuCount[3];
+	std::cout << "\nå‘½ä¸­:" << StatuCount[1];
+	std::cout << "\næš´å‡»:" << StatuCount[2];
+	std::cout << "\nMISS:" << StatuCount[3];
 	std::printf("\nTotal Frames:%d\n", FrameCount);
 	std::printf("FPS:%lf\n", VideoRate);
 	capture.release();
-	std::printf("TIME:%lf Ãë", (clock() - start)/1000);
+	std::printf("TIME:%lf ç§’", (clock() - start) / 1000);
 	in.close();
 	out.close();
 	return 0;
-	
+
 }
 
 
