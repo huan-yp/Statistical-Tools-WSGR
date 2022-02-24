@@ -1,9 +1,13 @@
-# 先别急着用，发现了一些 Bug，边框算法还要改进！！！
+
 # Statistical-Tools-WSGR
+
 
 ## 简介
 
 面向工作室的战舰少女统计工具，正在开发中
+
+## 算是算法论文吧，还在写。。。
+[一个 OIER 的 OCR 实践](https://www.luogu.com.cn/blog/CDFLS-stu4-60/yi-ge-oier-di-ocr-shi-jian)
 
 ## UnderConstruction
 1. 区分 "未命中" 和 "跳弹"。
