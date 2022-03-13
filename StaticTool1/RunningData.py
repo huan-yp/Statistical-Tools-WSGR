@@ -1,0 +1,15 @@
+screen = 0
+ShipStatu = [0,0,0,0,0,0,0]
+ShipPosition = (0,0)
+ShipPoint = 0
+FightCount = 0
+resolution = (960,540)
+TimeCount = 0
+FightError = 0
+PrepareError = 0
+LastCheckTime = 0
+FightSuccess = 0
+FightFinish = 0
+WORKPATH = ""
+TUNNELPATH = ""
+DATAPATH = ""
